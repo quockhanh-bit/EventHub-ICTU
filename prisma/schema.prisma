@@ -1,0 +1,147 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String
+  role          String         @default("ATTENDEE") // "ADMIN", "ORGANIZER", "ATTENDEE"
+  avatar        String?
+  phone         String?
+  organization  String?
+  status        String         @default("ACTIVE") // "ACTIVE", "BANNED"
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  events        Event[]        @relation("OrganizerEvents")
+  bookings      Booking[]
+  reviews       Review[]
+  notifications Notification[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String?  // lucide icon identifier
+  color       String?  // hex color code
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  events      Event[]
+}
+
+model Event {
+  id           String       @id @default(cuid())
+  title        String
+  slug         String       @unique
+  shortDesc    String
+  description  String
+  bannerImage  String
+  startDate    DateTime
+  endDate      DateTime
+  location     String
+  locationType String       @default("OFFLINE") // "OFFLINE", "ONLINE", "HYBRID"
+  onlineLink   String?
+  status       String       @default("PUBLISHED") // "DRAFT", "PENDING_APPROVAL", "PUBLISHED", "REJECTED", "CANCELLED", "COMPLETED"
+  isFeatured   Boolean      @default(false)
+  organizerId  String
+  categoryId   String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  organizer    User         @relation("OrganizerEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  ticketTiers  TicketTier[]
+  bookings     Booking[]
+  reviews      Review[]
+}
+
+model TicketTier {
+  id          String   @id @default(cuid())
+  eventId     String
+  name        String   // e.g., "Vé VIP", "Vé Tiêu Chuẩn", "Vé Sinh Viên Miễn Phí"
+  price       Float    @default(0)
+  quantity    Int      @default(100)
+  sold        Int      @default(0)
+  description String?
+  benefits    String?  // comma-separated or json string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]
+}
+
+model Booking {
+  id            String   @id @default(cuid())
+  bookingCode   String   @unique // e.g., "EVH-2026-9874"
+  userId        String
+  eventId       String
+  totalAmount   Float
+  status        String   @default("PAID") // "PENDING", "PAID", "CANCELLED", "REFUNDED"
+  paymentMethod String   @default("FREE") // "FREE", "MOMO", "BANK_TRANSFER", "VNPAY", "CREDIT_CARD"
+  customerName  String
+  customerEmail String
+  customerPhone String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets       Ticket[]
+}
+
+model Ticket {
+  id           String      @id @default(cuid())
+  ticketCode   String      @unique // e.g., "TCK-8923-XYZ"
+  qrCodeData   String      // Unique payload for QR scanner verification
+  bookingId    String
+  ticketTierId String
+  attendeeName String
+  attendeeEmail String
+  isCheckedIn  Boolean     @default(false)
+  checkedInAt  DateTime?
+  checkedInBy  String?     // Name of staff/organizer who scanned
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  booking      Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  ticketTier   TicketTier  @relation(fields: [ticketTierId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  rating    Int      @default(5) // 1 - 5
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

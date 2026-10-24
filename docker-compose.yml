@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  eventhub-app:
+    build: .
+    container_name: eventhub_ictu_app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:./dev.db
+      - JWT_SECRET=eventhub_super_secret_jwt_key_2026_antigravity
+      - NODE_ENV=production
+    volumes:
+      - ./prisma:/app/prisma
+    restart: unless-stopped
